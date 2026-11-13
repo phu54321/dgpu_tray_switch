@@ -163,11 +163,14 @@ void Controller::RunBoot() {
         ok = SetGpuEnabled(gpu, true, needReboot, error);
         if (ok) {
             changed = true;
-            WaitForGpuState(gpu, true, kDeviceSettleMs);
+            if (!needReboot && !WaitForGpuState(gpu, true, kDeviceSettleMs)) {
+                ok = false;
+                error = L"Timed out waiting for the dGPU to become enabled.";
+            }
         }
     }
 
-    if (ok && !desired) {
+    if (ok && !needReboot && !desired) {
         {
             ExclusiveLock l(lock_);
             op_ = ControllerOp::Disable;
@@ -294,14 +297,20 @@ Controller::Result Controller::ApplyOnce(bool enable) {
         std::vector<std::wstring> dependents;
         StopServices(services, dependents, svcError);
         r.ok = SetGpuEnabled(gpu, false, r.needReboot, r.error);
-        if (r.ok && !r.needReboot) WaitForGpuState(gpu, false, kDeviceSettleMs);
+        if (r.ok && !r.needReboot && !WaitForGpuState(gpu, false, kDeviceSettleMs)) {
+            r.ok = false;
+            r.error = L"Timed out waiting for the dGPU to become disabled.";
+        }
         std::wstring startError;
         StartServices(services, dependents, startError);
         if (svcError.empty()) svcError = startError;
     } else {
         r.ok = SetGpuEnabled(gpu, true, r.needReboot, r.error);
-        if (r.ok) {
-            WaitForGpuState(gpu, true, kDeviceSettleMs);
+        if (r.ok && !r.needReboot && !WaitForGpuState(gpu, true, kDeviceSettleMs)) {
+            r.ok = false;
+            r.error = L"Timed out waiting for the dGPU to become enabled.";
+        }
+        if (r.ok && !r.needReboot) {
             // Give the driver time to initialize before restarting services.
             if (!SleepUnlessQuitting(settings::NvDelayMs())) return r;
             RestartServices(services, svcError);
