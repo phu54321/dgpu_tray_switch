@@ -69,6 +69,7 @@ void Controller::Request(bool enable) {
     {
         ExclusiveLock l(lock_);
         requested_ = enable;
+        ++requestRevision_;
     }
     settings::SetDesiredEnabled(enable);
     PostState();
@@ -145,12 +146,14 @@ void Controller::RunBoot() {
 
     DgpuInfo gpu;
     bool desired;
+    std::uint64_t revision;
     {
         ExclusiveLock l(lock_);
         bootPending_ = false;
         if (quitting_ || gpu_.instanceId.empty()) return;
         gpu = gpu_;
         desired = requested_;
+        revision = requestRevision_;
         op_ = ControllerOp::Enable;
     }
     PostState();
@@ -195,6 +198,7 @@ void Controller::RunBoot() {
         ExclusiveLock l(lock_);
         op_ = ControllerOp::None;
         applied_ = ok ? desired : QueryGpuState(gpu_) != GpuState::Disabled;
+        if (!ok && requestRevision_ == revision) requested_ = applied_;
     }
     if (!ok) PostNotice(true, L"Boot restore failed: " + error);
     else if (!svcError.empty()) PostNotice(true, svcError);
@@ -214,6 +218,7 @@ void Controller::Drain() {
 
     for (;;) {
         bool target = false, restart = false;
+        std::uint64_t revision;
         {
             ExclusiveLock l(lock_);
             if (quitting_) return;
@@ -229,6 +234,7 @@ void Controller::Drain() {
                 target = requested_;
             }
             op_ = restart ? ControllerOp::RestartServices : target ? ControllerOp::Enable : ControllerOp::Disable;
+            revision = requestRevision_;
         }
         PostState();
 
@@ -248,9 +254,9 @@ void Controller::Drain() {
             if (r.ok) {
                 applied_ = target;
             } else {
-                // Resync with reality and stop instead of retrying in a loop.
+                // Stop retrying this request, but preserve any newer click.
                 applied_ = QueryGpuState(gpu_) != GpuState::Disabled;
-                requested_ = applied_;
+                if (requestRevision_ == revision) requested_ = applied_;
             }
         }
         if (!r.ok) {

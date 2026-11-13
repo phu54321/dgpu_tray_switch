@@ -4,6 +4,7 @@
 
 #include <windows.h>
 #include <string>
+#include <cstdint>
 
 // Posted to the notify window whenever the snapshot changes.
 constexpr UINT WM_APP_CONTROLLER_STATE = WM_APP + 1;
@@ -77,6 +78,7 @@ private:
     DgpuInfo gpu_;
     bool applied_ = false;
     bool requested_ = false;
+    std::uint64_t requestRevision_ = 0;
     ControllerOp op_ = ControllerOp::None;
     bool restartPending_ = false;
     bool bootPending_ = false;
