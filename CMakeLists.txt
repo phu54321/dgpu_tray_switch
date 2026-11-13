@@ -34,4 +34,4 @@ if(NOT MINGW)
     # Our manifest carries requestedExecutionLevel; drop the linker's default one.
     target_link_options(dgpu_tray_switch PRIVATE "LINKER:/MANIFESTUAC:NO")
 endif()
-target_link_libraries(dgpu_tray_switch PRIVATE user32 shell32 setupapi cfgmgr32)
+target_link_libraries(dgpu_tray_switch PRIVATE user32 shell32 setupapi cfgmgr32 advapi32)
