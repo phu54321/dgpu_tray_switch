@@ -35,7 +35,7 @@ public:
     // bootMode runs the boot restore first: enable the dGPU, then return it
     // to the last chosen state, restarting services only if anything toggled.
     bool Start(HWND notifyWindow, bool bootMode);
-    // Finishes the operation in flight (bounded wait) and drops queued ones.
+    // Joins the worker after the operation in flight and drops queued ones.
     void Shutdown();
 
     void Request(bool enable);

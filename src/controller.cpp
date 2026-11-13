@@ -6,7 +6,6 @@
 namespace {
 
 constexpr DWORD kDeviceSettleMs = 10000;
-constexpr DWORD kShutdownWaitMs = 60000;
 // Let the device stacks finish powering up after resume before touching them.
 constexpr DWORD kResumeSettleMs = 3000;
 
@@ -34,6 +33,7 @@ Controller::~Controller() {
 }
 
 bool Controller::Start(HWND notifyWindow, bool bootMode) {
+    if (!wake_ || !quit_) return false;
     notify_ = notifyWindow;
     {
         ExclusiveLock l(lock_);
@@ -58,7 +58,9 @@ void Controller::Shutdown() {
     }
     SetEvent(quit_);
     SetEvent(wake_);
-    WaitForSingleObject(thread_, kShutdownWaitMs);
+    // Service/device calls cannot safely be abandoned. Keep this object and
+    // its events alive until the worker has completed its cleanup.
+    WaitForSingleObject(thread_, INFINITE);
     CloseHandle(thread_);
     thread_ = nullptr;
 }
