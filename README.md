@@ -18,6 +18,9 @@ It doesn't use vendor ACPI calls. It enables or disables the dGPU's PnP device n
 - **Boot restore**
   - When started at logon, the app first enables the dGPU, then returns it to the last state you chose.
   - The services are restarted only if the device was actually toggled.
+- **Sleep and hibernate**
+  - The dGPU isn't touched before sleep, because Windows gives apps only about 2 seconds and doesn't wait for them.
+  - After resume, the app runs the same restore as at boot: it enables the dGPU, then returns it to your chosen state. This happens even if the screen stays off, for example in clamshell mode.
 - **Start with Windows**
   - Uses a Task Scheduler logon task with highest privileges, so there is no UAC prompt at logon.
 

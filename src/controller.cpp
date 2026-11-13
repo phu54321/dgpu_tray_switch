@@ -7,6 +7,8 @@ namespace {
 
 constexpr DWORD kDeviceSettleMs = 10000;
 constexpr DWORD kShutdownWaitMs = 60000;
+// Let the device stacks finish powering up after resume before touching them.
+constexpr DWORD kResumeSettleMs = 3000;
 
 class ExclusiveLock {
 public:
@@ -80,6 +82,25 @@ void Controller::RequestServiceRestart() {
     SetEvent(wake_);
 }
 
+void Controller::OnSuspend() {
+    // Only remember the suspend. The device is not touched here: Windows
+    // gives ~2 s and doesn't wait, too short to bring the driver up safely.
+    ExclusiveLock l(lock_);
+    suspended_ = true;
+}
+
+void Controller::OnResume() {
+    {
+        ExclusiveLock l(lock_);
+        // Only once per suspend: Windows can send several resume events.
+        if (!suspended_) return;
+        suspended_ = false;
+        bootPending_ = true;
+        resumeSettle_ = true;
+    }
+    SetEvent(wake_);
+}
+
 ControllerSnapshot Controller::Snapshot() {
     ControllerSnapshot s;
     DgpuInfo gpu;
@@ -112,12 +133,20 @@ DWORD Controller::Run() {
 }
 
 void Controller::RunBoot() {
+    bool settle;
+    {
+        ExclusiveLock l(lock_);
+        settle = resumeSettle_;
+        resumeSettle_ = false;
+    }
+    if (settle && !SleepUnlessQuitting(kResumeSettleMs)) return;
+
     DgpuInfo gpu;
     bool desired;
     {
         ExclusiveLock l(lock_);
         bootPending_ = false;
-        if (quitting_) return;
+        if (quitting_ || gpu_.instanceId.empty()) return;
         gpu = gpu_;
         desired = requested_;
         op_ = ControllerOp::Enable;

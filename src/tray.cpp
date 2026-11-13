@@ -78,8 +78,9 @@ bool Tray::Create(HINSTANCE instance, Controller* controller) {
     wc.hIcon = LoadIconW(instance, MAKEINTRESOURCEW(1));
     if (!RegisterClassExW(&wc)) return false;
 
-    // A regular (hidden) top-level window: message-only windows don't get
-    // the TaskbarCreated broadcast.
+    // A regular top-level window that is never shown. Don't make it
+    // message-only (HWND_MESSAGE): those miss broadcasts such as
+    // TaskbarCreated and WM_POWERBROADCAST.
     hwnd_ = CreateWindowExW(0, kClassName, kAppTitle, WS_OVERLAPPED, 0, 0, 0, 0, nullptr, nullptr, instance, this);
     if (!hwnd_) return false;
 
@@ -87,6 +88,9 @@ bool Tray::Create(HINSTANCE instance, Controller* controller) {
     taskbarCreated_ = RegisterWindowMessageW(L"TaskbarCreated");
     ChangeWindowMessageFilterEx(hwnd_, taskbarCreated_, MSGFLT_ALLOW, nullptr);
     ChangeWindowMessageFilterEx(hwnd_, WM_APP_TRAY, MSGFLT_ALLOW, nullptr);
+
+    // Required to get PBT_APMSUSPEND/PBT_APMRESUMEAUTOMATIC on Modern Standby.
+    powerNotify_ = RegisterSuspendResumeNotification(hwnd_, DEVICE_NOTIFY_WINDOW_HANDLE);
 
     AddIcon();
     return true;
@@ -151,7 +155,14 @@ LRESULT Tray::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         }
         return 0;
 
+    case WM_POWERBROADCAST:
+        if (wp == PBT_APMSUSPEND) controller_->OnSuspend();
+        else if (wp == PBT_APMRESUMEAUTOMATIC) controller_->OnResume();
+        return TRUE;
+
     case WM_DESTROY:
+        if (powerNotify_) UnregisterSuspendResumeNotification(powerNotify_);
+        powerNotify_ = nullptr;
         RemoveIcon();
         hwnd_ = nullptr;
         PostQuitMessage(0);

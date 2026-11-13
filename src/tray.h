@@ -32,6 +32,7 @@ private:
     HWND hwnd_ = nullptr;
     Controller* controller_ = nullptr;
     UINT taskbarCreated_ = 0;
+    HPOWERNOTIFY powerNotify_ = nullptr;
     bool added_ = false;
     int iconSize_ = 0;
     HICON icons_[4] = {};

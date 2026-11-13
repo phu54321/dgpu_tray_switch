@@ -41,6 +41,13 @@ public:
     void Request(bool enable);
     void RequestServiceRestart();
 
+    // Power transitions (called on the window thread from WM_POWERBROADCAST).
+    // Suspend is only recorded; on the following resume the boot restore runs
+    // (enable if disabled, then back to the user's choice). Resume is used
+    // rather than display-on, since the screen may stay off (clamshell).
+    void OnSuspend();
+    void OnResume();
+
     ControllerSnapshot Snapshot();
 
 private:
@@ -73,5 +80,7 @@ private:
     ControllerOp op_ = ControllerOp::None;
     bool restartPending_ = false;
     bool bootPending_ = false;
+    bool resumeSettle_ = false;  // boot restore was triggered by a resume
+    bool suspended_ = false;
     bool quitting_ = false;
 };
