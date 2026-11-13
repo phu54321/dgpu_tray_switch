@@ -1,0 +1,26 @@
+#include <windows.h>
+
+@APP_MANIFEST_RESOURCE@
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
+PRODUCTVERSION  @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "FileDescription", "dGPU Tray Switch"
+            VALUE "FileVersion", "@PROJECT_VERSION@"
+            VALUE "ProductName", "dGPU Tray Switch"
+            VALUE "ProductVersion", "@PROJECT_VERSION@"
+            VALUE "OriginalFilename", "dgpu_tray_switch.exe"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END
