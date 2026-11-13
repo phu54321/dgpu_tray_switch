@@ -7,11 +7,21 @@
 #include <functional>
 #include <iostream>
 #include <stdexcept>
-#define private public
 #include "controller.h"
-#undef private
 #include "settings.h"
 #include "nv_services.h"
+
+// Befriended by Controller; exposes the worker steps without changing access
+// specifiers (which would alter MSVC name mangling and break linking).
+struct ControllerTestAccess {
+    static DgpuInfo& gpu(Controller& c) { return c.gpu_; }
+    static bool& applied(Controller& c) { return c.applied_; }
+    static bool& requested(Controller& c) { return c.requested_; }
+    static auto ApplyOnce(Controller& c, bool enable) { return c.ApplyOnce(enable); }
+    static void RunBoot(Controller& c) { c.RunBoot(); }
+    static void Drain(Controller& c) { c.Drain(); }
+};
+using T = ControllerTestAccess;
 
 namespace {
 GpuState state;
@@ -27,8 +37,8 @@ void Reset(Controller& c, bool enabled) {
     reboot = false;
     sets = waits = starts = restarts = 0;
     duringSet = {};
-    c.gpu_.instanceId = L"fake";
-    c.applied_ = c.requested_ = enabled;
+    T::gpu(c).instanceId = L"fake";
+    T::applied(c) = T::requested(c) = enabled;
 }
 }
 bool FindDgpu(const std::wstring&, DgpuInfo& gpu) { gpu.instanceId = L"fake"; return true; }
@@ -59,23 +69,23 @@ int wmain() {
         {
             Controller c; Reset(c, true);
             waitOk = false;
-            const auto r = c.ApplyOnce(false);
+            const auto r = T::ApplyOnce(c, false);
             Check(!r.ok && !r.error.empty(), "disable timeout must fail");
             Check(starts == 1, "services must be restored after timeout");
         }
         {
             Controller c; Reset(c, false);
             waitOk = false;
-            const auto r = c.ApplyOnce(true);
+            const auto r = T::ApplyOnce(c, true);
             Check(!r.ok && restarts == 0, "enable timeout must not restart services");
-            c.requested_ = true;
-            c.RunBoot();
-            Check(!c.applied_ && !c.requested_, "boot timeout must not record enabled or retry");
+            T::requested(c) = true;
+            T::RunBoot(c);
+            Check(!T::applied(c) && !T::requested(c), "boot timeout must not record enabled or retry");
         }
         {
             Controller c; Reset(c, false);
             reboot = true;
-            const auto r = c.ApplyOnce(true);
+            const auto r = T::ApplyOnce(c, true);
             Check(r.ok && r.needReboot && waits == 0 && restarts == 0, "reboot must be reported without waiting for driver");
         }
         {
@@ -83,32 +93,32 @@ int wmain() {
             c.Request(false);
             transitionOk = false;
             duringSet = [&] { c.Request(false); };
-            c.Drain();
-            Check(!c.requested_, "failed operation must preserve a newer request for the same target");
+            T::Drain(c);
+            Check(!T::requested(c), "failed operation must preserve a newer request for the same target");
             transitionOk = true;
-            c.Drain();
+            T::Drain(c);
             Check(state == GpuState::Disabled && sets == 2, "newer request must still execute");
         }
         for (const auto external : {GpuState::Disabled, GpuState::Problem, GpuState::NotFound}) {
             Controller c; Reset(c, true);
             state = external;
             c.Request(true);
-            c.Drain();
+            T::Drain(c);
             Check(sets == 1 && state == GpuState::Enabled, "enable must reconcile external changes and problems");
         }
         {
             Controller c; Reset(c, true);
             c.Request(false);
             transitionOk = false;
-            c.Drain();
-            c.Drain();
-            Check(sets == 1 && c.requested_, "failed request must not retry indefinitely");
+            T::Drain(c);
+            T::Drain(c);
+            Check(sets == 1 && T::requested(c), "failed request must not retry indefinitely");
         }
         {
             Controller c; Reset(c, false);
             state = GpuState::Enabled;
             c.Request(false);
-            c.Drain();
+            T::Drain(c);
             Check(sets == 1 && state == GpuState::Disabled, "disable must reconcile external changes");
         }
         std::cout << "Controller regressions passed\n";

@@ -52,6 +52,9 @@ public:
     ControllerSnapshot Snapshot();
 
 private:
+    // Regression tests (tests/controller_tests.cpp) drive the worker steps directly.
+    friend struct ControllerTestAccess;
+
     struct Result {
         bool ok = false;
         bool needReboot = false;
