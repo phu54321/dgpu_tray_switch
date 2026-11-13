@@ -94,8 +94,8 @@ ControllerSnapshot Controller::Snapshot() {
     {
         ExclusiveLock l(lock_);
         gpu = gpu_;
-        s.busy = running_ || restartPending_ || (!gpu_.instanceId.empty() && requested_ != applied_);
-        s.opTarget = opTarget_;
+        s.busy = op_ != ControllerOp::None || restartPending_ || (!gpu_.instanceId.empty() && requested_ != applied_);
+        s.op = op_;
         s.requested = requested_;
     }
     s.deviceName = gpu.name;
@@ -139,8 +139,7 @@ void Controller::Drain() {
             } else {
                 target = requested_;
             }
-            running_ = true;
-            opTarget_ = target;
+            op_ = restart ? ControllerOp::RestartServices : target ? ControllerOp::Enable : ControllerOp::Disable;
         }
         PostState();
 
@@ -149,14 +148,14 @@ void Controller::Drain() {
             bool ok = RestartServices(settings::Services(), error);
             PostNotice(!ok, ok ? L"NVIDIA services restarted." : L"Service restart failed: " + error);
             ExclusiveLock l(lock_);
-            running_ = false;
+            op_ = ControllerOp::None;
             continue;
         }
 
         Result r = ApplyOnce(target);
         {
             ExclusiveLock l(lock_);
-            running_ = false;
+            op_ = ControllerOp::None;
             if (r.ok) {
                 applied_ = target;
             } else {

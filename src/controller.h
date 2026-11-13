@@ -11,12 +11,14 @@ constexpr UINT WM_APP_CONTROLLER_STATE = WM_APP + 1;
 // wParam is nonzero for errors.
 constexpr UINT WM_APP_CONTROLLER_NOTICE = WM_APP + 2;
 
+enum class ControllerOp { None, Enable, Disable, RestartServices };
+
 struct ControllerSnapshot {
     GpuState state = GpuState::NotFound;
     ULONG problemCode = 0;
     std::wstring deviceName;
     bool busy = false;       // an operation is running or queued
-    bool opTarget = false;   // target of the running operation
+    ControllerOp op = ControllerOp::None;  // the operation running right now
     bool requested = false;  // state the user asked for last
 };
 
@@ -66,8 +68,7 @@ private:
     DgpuInfo gpu_;
     bool applied_ = false;
     bool requested_ = false;
-    bool running_ = false;
-    bool opTarget_ = false;
+    ControllerOp op_ = ControllerOp::None;
     bool restartPending_ = false;
     bool quitting_ = false;
 };
