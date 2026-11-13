@@ -180,6 +180,13 @@ void Controller::RunBoot() {
             op_ = ControllerOp::Disable;
         }
         PostState();
+        // A just-enabled GPU keeps the NVIDIA container busy initializing,
+        // and it then stops very slowly. Let it settle before stopping it.
+        if (changed && !SleepUnlessQuitting(settings::NvDelayMs())) {
+            ExclusiveLock l(lock_);
+            op_ = ControllerOp::None;
+            return;
+        }
         // Stops services, disables the device and starts them again,
         // which doubles as the service restart.
         Result r = ApplyOnce(false);

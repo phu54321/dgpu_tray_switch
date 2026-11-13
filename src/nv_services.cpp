@@ -9,7 +9,9 @@
 
 namespace {
 
-constexpr DWORD kServiceTimeoutMs = 20000;
+// NVDisplay.Container can take well over 20 s to stop while it is still
+// initializing a GPU that was just enabled (seen after resume).
+constexpr DWORD kServiceTimeoutMs = 60000;
 
 struct ScHandle {
     SC_HANDLE h = nullptr;
