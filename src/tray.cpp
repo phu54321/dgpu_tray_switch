@@ -221,8 +221,9 @@ void Tray::ShowMenu(POINT pt) {
     AppendMenuW(menu, MF_STRING, ID_ENABLE, L"&Enable dGPU");
     AppendMenuW(menu, MF_STRING, ID_DISABLE, L"&Disable dGPU (Eco)");
     CheckMenuRadioItem(menu, ID_ENABLE, ID_DISABLE, s.requested ? ID_ENABLE : ID_DISABLE, MF_BYCOMMAND);
-    AppendMenuW(menu, MF_STRING, ID_RESTART_SERVICES, L"&Restart NVIDIA services");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    // Toggles already restart services; this is only for recovering stuck ones.
+    AppendMenuW(menu, MF_STRING, ID_RESTART_SERVICES, L"(Manual) &Restart NVIDIA services");
     AppendMenuW(menu, MF_STRING | (IsAutostartEnabled() ? MF_CHECKED : MF_UNCHECKED), ID_AUTOSTART,
                 L"&Start with Windows");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);

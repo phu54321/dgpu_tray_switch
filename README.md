@@ -8,7 +8,7 @@ It doesn't use vendor ACPI calls. It enables or disables the dGPU's PnP device n
 
 - **Tray toggle**
   - Left-click the icon to switch the dGPU on or off.
-  - Right-click for a menu with status, Enable, Disable, Restart NVIDIA services, Start with Windows, and Exit.
+  - Right-click for a menu with status, Enable, Disable, (Manual) Restart NVIDIA services, Start with Windows, and Exit.
 - **Queued requests**
   - Clicks are never blocked while an operation is running. The app always moves toward the state you asked for most recently.
   - Flipping it back and forth during an operation ends up doing nothing.
