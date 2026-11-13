@@ -79,6 +79,7 @@ private:
     bool applied_ = false;
     bool requested_ = false;
     std::uint64_t requestRevision_ = 0;
+    bool reconcilePending_ = false;
     ControllerOp op_ = ControllerOp::None;
     bool restartPending_ = false;
     bool bootPending_ = false;

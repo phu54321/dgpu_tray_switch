@@ -70,6 +70,7 @@ void Controller::Request(bool enable) {
         ExclusiveLock l(lock_);
         requested_ = enable;
         ++requestRevision_;
+        reconcilePending_ = true;
     }
     settings::SetDesiredEnabled(enable);
     PostState();
@@ -222,6 +223,15 @@ void Controller::Drain() {
         {
             ExclusiveLock l(lock_);
             if (quitting_) return;
+            if (reconcilePending_) {
+                reconcilePending_ = false;
+                if (gpu_.instanceId.empty()) FindDgpu(settings::DeviceInstanceId(), gpu_);
+                const GpuState state = QueryGpuState(gpu_);
+                // Problems and missing devices must not count as enabled.
+                // Force an attempt unless the requested state is observed.
+                applied_ = state == GpuState::Enabled ? true :
+                           state == GpuState::Disabled ? false : !requested_;
+            }
             if (restartPending_) {
                 restartPending_ = false;
                 restart = true;
