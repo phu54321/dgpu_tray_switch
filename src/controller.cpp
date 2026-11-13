@@ -31,7 +31,7 @@ Controller::~Controller() {
     if (quit_) CloseHandle(quit_);
 }
 
-bool Controller::Start(HWND notifyWindow) {
+bool Controller::Start(HWND notifyWindow, bool bootMode) {
     notify_ = notifyWindow;
     {
         ExclusiveLock l(lock_);
@@ -39,6 +39,7 @@ bool Controller::Start(HWND notifyWindow) {
             applied_ = QueryGpuState(gpu_) != GpuState::Disabled;
             // Converge to the last state the user chose, if any.
             requested_ = settings::DesiredEnabled().value_or(applied_);
+            bootPending_ = bootMode;
         }
     }
     thread_ = CreateThread(nullptr, 0, ThreadProc, this, 0, nullptr);
@@ -119,7 +120,70 @@ DWORD Controller::Run() {
     }
 }
 
+void Controller::RunBoot() {
+    DgpuInfo gpu;
+    bool desired;
+    {
+        ExclusiveLock l(lock_);
+        bootPending_ = false;
+        if (quitting_) return;
+        gpu = gpu_;
+        desired = requested_;
+        op_ = ControllerOp::Enable;
+    }
+    PostState();
+
+    // Bring the dGPU up first: some firmware/drivers misbehave if the GPU
+    // stays disabled across boot. Then fall back to the user's last choice.
+    bool changed = false, needReboot = false, ok = true;
+    std::wstring error, svcError;
+    if (QueryGpuState(gpu) == GpuState::Disabled) {
+        ok = SetGpuEnabled(gpu, true, needReboot, error);
+        if (ok) {
+            changed = true;
+            WaitForGpuState(gpu, true, kDeviceSettleMs);
+        }
+    }
+
+    if (ok && !desired) {
+        {
+            ExclusiveLock l(lock_);
+            op_ = ControllerOp::Disable;
+        }
+        PostState();
+        // Stops services, disables the device and starts them again,
+        // which doubles as the service restart.
+        Result r = ApplyOnce(false);
+        ok = r.ok;
+        error = r.error;
+        svcError = r.warning;
+        needReboot = needReboot || r.needReboot;
+    } else if (ok && changed) {
+        if (SleepUnlessQuitting(settings::NvDelayMs())) {
+            std::wstring e;
+            if (!RestartServices(settings::Services(), e)) svcError = L"Service restart issue: " + e;
+        }
+    }
+    // Nothing toggled: the services were never disturbed, so skip the restart.
+
+    {
+        ExclusiveLock l(lock_);
+        op_ = ControllerOp::None;
+        applied_ = ok ? desired : QueryGpuState(gpu_) != GpuState::Disabled;
+    }
+    if (!ok) PostNotice(true, L"Boot restore failed: " + error);
+    else if (!svcError.empty()) PostNotice(true, svcError);
+    else if (needReboot) PostNotice(false, L"Restart Windows to finish restoring the dGPU state.");
+}
+
 void Controller::Drain() {
+    bool boot;
+    {
+        ExclusiveLock l(lock_);
+        boot = bootPending_;
+    }
+    if (boot) RunBoot();
+
     bool changed = false, needReboot = false;
     std::wstring warning;
 

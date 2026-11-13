@@ -32,7 +32,9 @@ public:
     Controller(const Controller&) = delete;
     Controller& operator=(const Controller&) = delete;
 
-    bool Start(HWND notifyWindow);
+    // bootMode runs the boot restore first: enable the dGPU, then return it
+    // to the last chosen state, restarting services only if anything toggled.
+    bool Start(HWND notifyWindow, bool bootMode);
     // Finishes the operation in flight (bounded wait) and drops queued ones.
     void Shutdown();
 
@@ -52,6 +54,7 @@ private:
 
     static DWORD WINAPI ThreadProc(void* self);
     DWORD Run();
+    void RunBoot();
     void Drain();
     Result ApplyOnce(bool enable);
     bool SleepUnlessQuitting(DWORD ms);
@@ -70,5 +73,6 @@ private:
     bool requested_ = false;
     ControllerOp op_ = ControllerOp::None;
     bool restartPending_ = false;
+    bool bootPending_ = false;
     bool quitting_ = false;
 };
