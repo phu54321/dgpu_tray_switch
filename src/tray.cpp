@@ -1,5 +1,7 @@
 #include "tray.h"
 
+#include "autostart.h"
+
 #include <shellapi.h>
 #include <windowsx.h>
 
@@ -16,6 +18,7 @@ enum MenuId : UINT {
     ID_ENABLE,
     ID_DISABLE,
     ID_RESTART_SERVICES,
+    ID_AUTOSTART,
     ID_EXIT,
 };
 
@@ -141,6 +144,11 @@ LRESULT Tray::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         case ID_ENABLE:           controller_->Request(true); break;
         case ID_DISABLE:          controller_->Request(false); break;
         case ID_RESTART_SERVICES: controller_->RequestServiceRestart(); break;
+        case ID_AUTOSTART: {
+            std::wstring error;
+            if (!SetAutostart(!IsAutostartEnabled(), error)) ShowNotice(true, error);
+            break;
+        }
         case ID_EXIT:             DestroyWindow(hwnd_); break;
         }
         return 0;
@@ -214,6 +222,9 @@ void Tray::ShowMenu(POINT pt) {
     AppendMenuW(menu, MF_STRING, ID_DISABLE, L"&Disable dGPU (Eco)");
     CheckMenuRadioItem(menu, ID_ENABLE, ID_DISABLE, s.requested ? ID_ENABLE : ID_DISABLE, MF_BYCOMMAND);
     AppendMenuW(menu, MF_STRING, ID_RESTART_SERVICES, L"&Restart NVIDIA services");
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(menu, MF_STRING | (IsAutostartEnabled() ? MF_CHECKED : MF_UNCHECKED), ID_AUTOSTART,
+                L"&Start with Windows");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, ID_EXIT, L"E&xit");
 

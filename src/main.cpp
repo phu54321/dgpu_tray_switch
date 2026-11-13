@@ -2,6 +2,7 @@
 #include "tray.h"
 
 #include <windows.h>
+#include <objbase.h>
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR cmdLine, int) {
     HANDLE mutex = CreateMutexW(nullptr, TRUE, L"Local\\DgpuTraySwitch");
@@ -9,6 +10,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR cmdLine, int) {
 
     // Passed by the logon task: restore the dGPU state after boot.
     const bool bootMode = cmdLine && wcsstr(cmdLine, L"--boot") != nullptr;
+
+    // COM (apartment-threaded) for the Task Scheduler autostart API.
+    CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
     Controller controller;
     Tray tray;
@@ -22,6 +26,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR cmdLine, int) {
 
     // Let an in-flight device change finish so the GPU isn't left half-toggled.
     controller.Shutdown();
+    CoUninitialize();
     CloseHandle(mutex);
     return 0;
 }
