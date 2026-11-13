@@ -7,8 +7,8 @@ It doesn't use vendor ACPI calls. It enables or disables the dGPU's PnP device n
 ## Features
 
 - **Tray toggle**
-  - Left-click the icon to switch the dGPU on or off.
-  - Right-click for a menu with status, Enable, Disable, (Manual) Restart NVIDIA services, Start with Windows, and Exit.
+  - Right-click the icon for a menu with status, Enable, Disable, (Manual) Restart NVIDIA services, Start with Windows, and Exit.
+  - Left-click does nothing, so the dGPU can't be switched by accident.
 - **Queued requests**
   - Clicks are never blocked while an operation is running. The app always moves toward the state you asked for most recently.
   - Flipping it back and forth during an operation ends up doing nothing.
@@ -46,7 +46,7 @@ The app icon is generated at build time by `tools/icongen.cpp`. It uses the same
 ## Usage
 
 1. Run `dgpu_tray_switch.exe`. It asks for administrator rights, because changing a device or a service needs them.
-2. Click the tray icon to toggle the dGPU.
+2. Right-click the tray icon and choose **Enable dGPU** or **Disable dGPU (Eco)**.
 3. Tick **Start with Windows** in the menu to have it start at logon and restore your last choice.
 
 Your last choice is remembered. A normal launch also brings the device to that state.

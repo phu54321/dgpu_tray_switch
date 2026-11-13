@@ -38,7 +38,6 @@ public:
     // Finishes the operation in flight (bounded wait) and drops queued ones.
     void Shutdown();
 
-    void Toggle();
     void Request(bool enable);
     void RequestServiceRestart();
 

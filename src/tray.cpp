@@ -113,11 +113,9 @@ LRESULT Tray::Handle(UINT msg, WPARAM wp, LPARAM lp) {
 
     switch (msg) {
     case WM_APP_TRAY:
+        // Left-click deliberately does nothing: toggling is only offered
+        // through the context menu to avoid accidental switches.
         switch (LOWORD(lp)) {
-        case NIN_SELECT:
-        case NIN_KEYSELECT:
-            controller_->Toggle();
-            return 0;
         case WM_CONTEXTMENU:
             ShowMenu({GET_X_LPARAM(wp), GET_Y_LPARAM(wp)});
             return 0;

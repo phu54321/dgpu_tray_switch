@@ -61,15 +61,6 @@ void Controller::Shutdown() {
     thread_ = nullptr;
 }
 
-void Controller::Toggle() {
-    bool target;
-    {
-        ExclusiveLock l(lock_);
-        target = !requested_;
-    }
-    Request(target);
-}
-
 void Controller::Request(bool enable) {
     {
         ExclusiveLock l(lock_);
