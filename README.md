@@ -44,6 +44,10 @@ cmake --build build
 
 This produces `build/dgpu_tray_switch.exe`, a single statically linked exe when built with MinGW.
 
+To run controller regression tests with fake GPU and service APIs (no hardware
+changes), configure with `-DDGPU_BUILD_TESTS=ON`, build, then run
+`ctest --test-dir build --output-on-failure`.
+
 The app icon is generated at build time by `tools/icongen.cpp`. It uses the same renderer as the tray icons in `src/icons.cpp`.
 
 ## Usage
